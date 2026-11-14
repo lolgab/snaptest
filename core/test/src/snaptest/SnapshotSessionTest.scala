@@ -1,15 +1,13 @@
 package snaptest
 
-// A suite and its snapshots, written like the generated ones
+// A suite, its snapshots are in `snapshots/snaptest`
 class SessionFixture
-object SessionFixtureSnapshots extends Snapshots:
-  def entries = Seq("a" -> "1", "b" -> "2")
 
 class SnapshotSessionTest extends munit.FunSuite:
 
   // Sessions in these tests never write: `finish` is only called in `No` mode
   private val source = "/tmp/snaptest/FixtureTest.scala"
-  private val path = "/tmp/snaptest/snapshots/SessionFixtureSnapshots.scala"
+  private val path = "/tmp/snapshots/snaptest/SessionFixtureSnapshots.scala"
 
   test("matched") {
     val session = SnapshotSession(classOf[SessionFixture], SnapshotMode.No)
@@ -56,7 +54,7 @@ class SnapshotSessionTest extends munit.FunSuite:
       session.test("a").check("1", source),
       SnapshotResult.Missing(
         "a",
-        "/tmp/snaptest/snapshots/SnapshotSessionTestSnapshots.scala"
+        "/tmp/snapshots/snaptest/SnapshotSessionTestSnapshots.scala"
       )
     )
   }
@@ -67,7 +65,7 @@ class SnapshotSessionTest extends munit.FunSuite:
       session.test("missing").check("1", "FixtureTest.scala"),
       SnapshotResult.Missing(
         "missing",
-        "snapshots/SessionFixtureSnapshots.scala"
+        "snapshots/snaptest/SessionFixtureSnapshots.scala"
       )
     )
   }
@@ -78,7 +76,7 @@ class SnapshotSessionTest extends munit.FunSuite:
       session.test("missing").check("1", "FixtureTest.test.scala"),
       SnapshotResult.Missing(
         "missing",
-        "snapshots/SessionFixtureSnapshots.test.scala"
+        "snapshots/snaptest/SessionFixtureSnapshots.test.scala"
       )
     )
   }
@@ -89,7 +87,7 @@ class SnapshotSessionTest extends munit.FunSuite:
       session.test("missing").check("1", "FixtureTest.spec.scala"),
       SnapshotResult.Missing(
         "missing",
-        "snapshots/SessionFixtureSnapshots.scala"
+        "snapshots/snaptest/SessionFixtureSnapshots.scala"
       )
     )
   }

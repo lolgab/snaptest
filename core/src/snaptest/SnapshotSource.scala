@@ -3,7 +3,7 @@ package snaptest
 /** Generates the Scala source of the [[Snapshots]] object of a suite:
   *
   * {{{
-  * package example
+  * package snapshots.example
   *
   * object ExampleSnapshotTestSnapshots extends snaptest.Snapshots {
   *   def entries = Seq(
@@ -37,7 +37,15 @@ private[snaptest] object SnapshotSource:
     * object
     */
   final case class Names(pkg: String, suite: String, obj: String):
-    def fullName: String = if pkg.isEmpty then obj else s"$pkg.$obj"
+
+    /** Package of the snapshots object: the package of the suite in the
+      * `snapshots` package, which mirrors the directories of the snapshots
+      */
+    def objPkg: String = if pkg.isEmpty then "snapshots" else s"snapshots.$pkg"
+
+    def fullName: String = s"$objPkg.$obj"
+
+    def suiteFullName: String = if pkg.isEmpty then suite else s"$pkg.$suite"
 
   def names(suiteClassName: String): Names =
     val i = suiteClassName.lastIndexOf('.')
@@ -47,6 +55,32 @@ private[snaptest] object SnapshotSource:
       name.replace('$', '.'),
       name.replace('$', '_') + "Snapshots"
     )
+
+  /** Path of the snapshots file of a suite defined in `sourcePath`:
+    * `<root>/snapshots/<package directories>/<Suite>Snapshots.scala`.
+    *
+    * The root is the source directory of the package when the test file is in
+    * its package directory (`src/test/scala/a/b/FooTest.scala` for `a.b`),
+    * otherwise the directory of the test file. The directories under the root
+    * match the package of the snapshots object, and fully qualified names give
+    * suites with the same name in different packages different files.
+    */
+  def path(names: Names, sourcePath: String): String =
+    val i = sourcePath.lastIndexWhere(c => c == '/' || c == '\\')
+    val sep = if i >= 0 then sourcePath(i) else '/'
+    // Relative source paths (Scala CLI) resolve from the working directory
+    val dir = sourcePath.take(i + 1)
+    val pkg = names.pkg.split('.').filter(_.nonEmpty).toSeq
+    val pkgDir = pkg.map(_ + sep).mkString
+    val inPackageDir =
+      pkg.nonEmpty && dir.endsWith(pkgDir) &&
+        (dir.length == pkgDir.length ||
+          dir(dir.length - pkgDir.length - 1) == sep)
+    val root = if inPackageDir then dir.dropRight(pkgDir.length) else dir
+    // Scala CLI compiles `.test.scala` files with the test dependencies
+    val ext =
+      if sourcePath.endsWith(".test.scala") then ".test.scala" else ".scala"
+    s"${root}snapshots$sep$pkgDir${names.obj}$ext"
 
   def render(
       names: Names,
@@ -58,10 +92,9 @@ private[snaptest] object SnapshotSource:
     sb ++= s"${SnapshotMode.EnvVar}=always\n"
     sb ++= "// format: off\n"
     sb ++= "// $COVERAGE-OFF$\n"
-    if names.pkg.nonEmpty then
-      sb ++= s"package ${names.pkg.split('.').map(identifier).mkString(".")}\n"
+    sb ++= s"package ${names.objPkg.split('.').map(identifier).mkString(".")}\n"
     // A link to the suite, which IDEs can navigate
-    sb ++= s"\n/** Snapshots of [[${names.suite}]] */\n"
+    sb ++= s"\n/** Snapshots of [[${names.suiteFullName}]] */\n"
     sb ++= s"object ${identifier(names.obj)} extends snaptest.Snapshots {\n"
     def seq(definition: String, part: Seq[(String, String)]): Unit =
       sb ++= s"  $definition = Seq(\n"
